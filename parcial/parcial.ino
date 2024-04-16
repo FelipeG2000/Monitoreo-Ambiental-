@@ -1,6 +1,10 @@
 #include <Arduino.h>
 #include <DHT.h>
 #include "MQ135.h"
+#include <Thread.h>
+
+//Iniciamos el hilo 
+Thread myThread = Thread();
 
 // Definir pines para los sensores
 #define DHT_PIN 15
@@ -32,7 +36,7 @@ float measurement =0;
 
 
 // Función para leer el sensor DHT22
-void readDHT22() {
+void niceCallback() {
   // Lectura de temperatura y humedad
 
   measurement = dht.readHumidity();
@@ -40,6 +44,7 @@ void readDHT22() {
   estimate = estimate + kalmanGain * (measurement - estimate);
   error_estimate = (1-kalmanGain)*error_estimate;
   humidity = estimate;
+  Serial.print(humidity);
 
 }
 
@@ -86,11 +91,15 @@ void setup() {
 
   // Inicializar sensor DHT22
   dht.begin();
+  myThread.onRun(niceCallback);
+	myThread.setInterval(500);
 }
 
 void loop() {
+  if(myThread.shouldRun())
+		myThread.run();
   // Leer los sensores en hilos separados
-  readDHT22();
+  
   readLM35();
   readMQ135();
 
@@ -99,7 +108,7 @@ void loop() {
   float nh3_concentration = ppm_to_nh3(mq135Value);
 
   // Enviar los datos por comunicación serial
-  Serial.print(humidity);
+
   Serial.print(",");
   Serial.print(lm35Temp);
   Serial.print(",");
